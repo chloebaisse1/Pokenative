@@ -2,9 +2,17 @@ import { Card } from "@/components/Card"
 import { Radio } from "@/components/Radio"
 import { Row } from "@/components/Row"
 import { ThemedText } from "@/components/ThemedText"
+import { Shadows } from "@/constants/Shadows"
 import { useThemeColors } from "@/hooks/useThemeColors"
-import { useState } from "react"
-import { Image, Modal, Pressable, StyleSheet, View } from "react-native"
+import { useRef, useState } from "react"
+import {
+  Dimensions,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native"
 
 type Props = {
   value: "id" | "name"
@@ -17,10 +25,21 @@ const options = [
 ] as const
 
 export function SortButton({ value, onChange }: Props) {
+  const buttonRef = useRef<View>(null)
   const colors = useThemeColors()
   const [isModalVisible, setModalVisibility] = useState(false)
+  const [position, setPosition] = useState<null | {
+    top: number
+    right: number
+  }>(null)
   const onButtonPress = () => {
-    setModalVisibility(true)
+    buttonRef.current?.measureInWindow((x, y, width, height) => {
+      setPosition({
+        top: y + height,
+        right: Dimensions.get("window").width - x - width,
+      })
+      setModalVisibility(true)
+    })
   }
   const onClose = () => {
     setModalVisibility(false)
@@ -28,7 +47,10 @@ export function SortButton({ value, onChange }: Props) {
   return (
     <>
       <Pressable onPress={onButtonPress}>
-        <View style={[styles.button, { backgroundColor: colors.grayWhite }]}>
+        <View
+          ref={buttonRef}
+          style={[styles.button, { backgroundColor: colors.grayWhite }]}
+        >
           <Image
             source={
               value === "id"
@@ -40,9 +62,16 @@ export function SortButton({ value, onChange }: Props) {
           />
         </View>
       </Pressable>
-      <Modal transparent visible={isModalVisible} onRequestClose={onClose}>
+      <Modal
+        animationType="fade"
+        transparent
+        visible={isModalVisible}
+        onRequestClose={onClose}
+      >
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={[styles.popup, { backgroundColor: colors.tint }]}>
+        <View
+          style={[styles.popup, { backgroundColor: colors.tint, ...position }]}
+        >
           <ThemedText
             style={styles.popup}
             variant="subtitle2"
@@ -80,10 +109,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0, 0.3)",
   },
   popup: {
+    position: "absolute",
+    width: 113,
     padding: 4,
     paddingTop: 16,
     gap: 16,
     borderRadius: 12,
+    ...Shadows.dp2,
   },
   title: {
     paddingLeft: 20,

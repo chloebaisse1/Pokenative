@@ -44,7 +44,7 @@ export default function Index() {
         </ThemedText>
       </Row>
 
-      <Row gap={16}>
+      <Row gap={16} style={styles.form}>
         <SearchBar value={search} onChange={setSearch} />
         <SortButton value={sortKey} onChange={setSortKey} />
       </Row>
@@ -91,5 +91,8 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 12,
+  },
+  form: {
+    paddingHorizontal: 12,
   },
 })
