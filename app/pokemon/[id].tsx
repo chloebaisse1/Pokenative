@@ -6,9 +6,14 @@ import { RootView } from "@/components/RootView"
 import { Row } from "@/components/Row"
 import { ThemedText } from "@/components/ThemedText"
 import { Colors } from "@/constants/Colors"
-import { formatWeight, getPokemonArtwork } from "@/functions/pokemon"
+import {
+  basePokemonStats,
+  formatWeight,
+  getPokemonArtwork,
+} from "@/functions/pokemon"
 import { useFetchQuery } from "@/hooks/useFetchQuery"
 import { useThemeColors } from "@/hooks/useThemeColors"
+import { Audio } from "expo-av"
 import { router, useLocalSearchParams } from "expo-router"
 import { Image, Pressable, StyleSheet, View } from "react-native"
 
@@ -16,6 +21,7 @@ export default function Pokemon() {
   const colors = useThemeColors()
   const params = useLocalSearchParams() as { id: string }
   const { data: pokemon } = useFetchQuery("/pokemon/[id]", { id: params.id })
+  const id = parseInt(params.id, 10)
   const { data: species } = useFetchQuery("/pokemon-species/[id]", {
     id: params.id,
   })
@@ -25,6 +31,36 @@ export default function Pokemon() {
   const bio = species?.flavor_text_entries
     ?.find(({ language }) => language.name === "en")
     ?.flavor_text.replaceAll("\n", ". ")
+
+  const stats = pokemon?.stats ?? basePokemonStats
+
+  const onImagePress = async () => {
+    const cry = pokemon?.cries.latest
+    if (!cry) {
+      return
+    }
+    const { sound } = await Audio.Sound.createAsync(
+      {
+        uri: cry,
+      },
+      { shouldPlay: true }
+    )
+    sound.playAsync()
+  }
+
+  const onPrevious = () => {
+    router.replace({
+      pathname: "/pokemon/[id]",
+      params: { id: Math.max(id - 1, 1) },
+    })
+  }
+
+  const onNext = () => {
+    router.replace({
+      pathname: "/pokemon/[id]",
+      params: { id: Math.min(id + 1, 151) },
+    })
+  }
 
   return (
     <RootView backgroundColor={colorType}>
@@ -58,16 +94,36 @@ export default function Pokemon() {
           </ThemedText>
         </Row>
         <View style={styles.body}>
-          <Image
-            style={styles.artwork}
-            source={{
-              uri: getPokemonArtwork(params.id),
-            }}
-            width={200}
-            height={200}
-          />
+          <Row style={styles.imageRow}>
+            <Pressable onPress={onPrevious}>
+              <Image
+                width={24}
+                height={24}
+                source={require("@/assets/images/chevron_left.png")}
+              />
+            </Pressable>
+
+            <Pressable onPress={onImagePress}>
+              <Image
+                style={styles.artwork}
+                source={{
+                  uri: getPokemonArtwork(params.id),
+                }}
+                width={200}
+                height={200}
+              />
+            </Pressable>
+            <Pressable onPress={onNext}>
+              <Image
+                width={24}
+                height={24}
+                source={require("@/assets/images/chevron_right.png")}
+              />
+            </Pressable>
+          </Row>
+
           <Card style={styles.card}>
-            <Row gap={16}>
+            <Row gap={16} style={{ height: 20 }}>
               {types.map((type) => (
                 <PokemonType name={type.type.name} key={type.type.name} />
               ))}
@@ -115,7 +171,7 @@ export default function Pokemon() {
             </ThemedText>
 
             <View style={{ alignSelf: "stretch" }}>
-              {pokemon?.stats.map((stat) => (
+              {stats.map((stat) => (
                 <PokemonStat
                   key={stat.stat.name}
                   name={stat.stat.name}
@@ -142,12 +198,16 @@ const styles = StyleSheet.create({
     right: 8,
     top: 8,
   },
-  artwork: {
+  imageRow: {
     position: "absolute",
     top: -140,
-    alignSelf: "center",
     zIndex: 2,
+    justifyContent: "space-between",
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
   },
+  artwork: {},
   body: {
     marginTop: 144,
   },
