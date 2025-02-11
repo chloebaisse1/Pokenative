@@ -1,5 +1,6 @@
 import { Card } from "@/components/Card"
 import { ThemedText } from "@/components/ThemedText"
+import { getPokemonArtwork } from "@/functions/pokemon"
 import { useThemeColors } from "@/hooks/useThemeColors"
 import { Link } from "expo-router"
 
@@ -25,7 +26,7 @@ export function PokemonCard({ style, id, name }: Props) {
           </ThemedText>
           <Image
             source={{
-              uri: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
+              uri: getPokemonArtwork(id),
             }}
             width={72}
             height={72}
