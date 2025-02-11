@@ -1,5 +1,6 @@
 import { Card } from "@/components/Card"
 import { PokemonSpec } from "@/components/pokemon/PokemonSpec"
+import { PokemonStat } from "@/components/pokemon/PokemonStat"
 import { PokemonType } from "@/components/pokemon/PokemonType"
 import { RootView } from "@/components/RootView"
 import { Row } from "@/components/Row"
@@ -9,7 +10,7 @@ import { formatWeight, getPokemonArtwork } from "@/functions/pokemon"
 import { useFetchQuery } from "@/hooks/useFetchQuery"
 import { useThemeColors } from "@/hooks/useThemeColors"
 import { router, useLocalSearchParams } from "expo-router"
-import { Image, Pressable, StyleSheet, Text, View } from "react-native"
+import { Image, Pressable, StyleSheet, View } from "react-native"
 
 export default function Pokemon() {
   const colors = useThemeColors()
@@ -112,9 +113,19 @@ export default function Pokemon() {
             <ThemedText variant="subtitle1" style={{ color: colorType }}>
               Base Stats
             </ThemedText>
+
+            <View style={{ alignSelf: "stretch" }}>
+              {pokemon?.stats.map((stat) => (
+                <PokemonStat
+                  key={stat.stat.name}
+                  name={stat.stat.name}
+                  value={stat.base_stat}
+                  color={colorType}
+                />
+              ))}
+            </View>
           </Card>
         </View>
-        <Text>Pokemon {params.id}</Text>
       </View>
     </RootView>
   )
@@ -143,6 +154,7 @@ const styles = StyleSheet.create({
   card: {
     paddingHorizontal: 20,
     paddingTop: 60,
+    paddingBottom: 20,
     gap: 16,
     alignItems: "center",
   },
