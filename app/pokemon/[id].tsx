@@ -31,13 +31,29 @@ export default function Pokemon() {
   const onPageScrollStateChanged = (e: {
     nativeEvent: { pageScrollState: string }
   }) => {
-    if (e.nativeEvent.pageScrollState === "idle" && offset.current != 0) {
+    if (e.nativeEvent.pageScrollState != "idle") {
+      return
+    }
+    if (offset.current === -1 && id === 2) {
+      return
+    }
+    if (offset.current === 1 && id === 150) {
+      return
+    }
+    if (offset.current != 0) {
       setId(id + offset.current)
       offset.current = 0
       pager.current?.setPageWithoutAnimation(1)
     }
   }
 
+  const onNext = () => {
+    pager.current?.setPage(2 + offset.current)
+  }
+
+  const onPreview = () => {
+    pager.current?.setPage(0)
+  }
   return (
     <PagerView
       ref={pager}
@@ -46,14 +62,30 @@ export default function Pokemon() {
       initialPage={1}
       style={{ flex: 1 }}
     >
-      <PokemonView key={id - 1} id={id - 1} />
-      <PokemonView key={id} id={id} />
-      <PokemonView key={id + 1} id={id + 1} />
+      <PokemonView
+        key={id - 1}
+        id={id - 1}
+        onNext={onNext}
+        onPrevious={onPreview}
+      />
+      <PokemonView key={id} id={id} onNext={onNext} onPrevious={onPreview} />
+      <PokemonView
+        key={id + 1}
+        id={id + 1}
+        onNext={onNext}
+        onPrevious={onPreview}
+      />
     </PagerView>
   )
 }
 
-function PokemonView({ id }: { id: number }) {
+type Props = {
+  id: number
+  onPrevious: () => void
+  onNext: () => void
+}
+
+function PokemonView({ id, onPrevious, onNext }: Props) {
   const colors = useThemeColors()
   const { data: pokemon } = useFetchQuery("/pokemon/[id]", { id: id })
   const { data: species } = useFetchQuery("/pokemon-species/[id]", {
@@ -80,20 +112,6 @@ function PokemonView({ id }: { id: number }) {
       { shouldPlay: true }
     )
     sound.playAsync()
-  }
-
-  const onPrevious = () => {
-    router.replace({
-      pathname: "/pokemon/[id]",
-      params: { id: Math.max(id - 1, 1) },
-    })
-  }
-
-  const onNext = () => {
-    router.replace({
-      pathname: "/pokemon/[id]",
-      params: { id: Math.min(id + 1, 151) },
-    })
   }
 
   const isFirst = id === 1
