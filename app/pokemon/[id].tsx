@@ -15,15 +15,49 @@ import { useFetchQuery } from "@/hooks/useFetchQuery"
 import { useThemeColors } from "@/hooks/useThemeColors"
 import { Audio } from "expo-av"
 import { router, useLocalSearchParams } from "expo-router"
+import { useRef, useState } from "react"
 import { Image, Pressable, StyleSheet, View } from "react-native"
+import PagerView from "react-native-pager-view"
 
 export default function Pokemon() {
-  const colors = useThemeColors()
   const params = useLocalSearchParams() as { id: string }
-  const { data: pokemon } = useFetchQuery("/pokemon/[id]", { id: params.id })
-  const id = parseInt(params.id, 10)
+  const [id, setId] = useState(parseInt(params.id, 10))
+  const offset = useRef(1)
+  const pager = useRef<PagerView>(null)
+
+  const onPageSelected = (e: { nativeEvent: { position: number } }) => {
+    offset.current = e.nativeEvent.position - 1
+  }
+  const onPageScrollStateChanged = (e: {
+    nativeEvent: { pageScrollState: string }
+  }) => {
+    if (e.nativeEvent.pageScrollState === "idle" && offset.current != 0) {
+      setId(id + offset.current)
+      offset.current = 0
+      pager.current?.setPageWithoutAnimation(1)
+    }
+  }
+
+  return (
+    <PagerView
+      ref={pager}
+      onPageSelected={onPageSelected}
+      onPageScrollStateChanged={onPageScrollStateChanged}
+      initialPage={1}
+      style={{ flex: 1 }}
+    >
+      <PokemonView key={id - 1} id={id - 1} />
+      <PokemonView key={id} id={id} />
+      <PokemonView key={id + 1} id={id + 1} />
+    </PagerView>
+  )
+}
+
+function PokemonView({ id }: { id: number }) {
+  const colors = useThemeColors()
+  const { data: pokemon } = useFetchQuery("/pokemon/[id]", { id: id })
   const { data: species } = useFetchQuery("/pokemon-species/[id]", {
-    id: params.id,
+    id: id,
   })
   const mainType = pokemon?.types?.[0].type.name
   const colorType = mainType ? Colors.type[mainType] : colors.tint
@@ -62,6 +96,9 @@ export default function Pokemon() {
     })
   }
 
+  const isFirst = id === 1
+  const isLast = id === 151
+
   return (
     <RootView backgroundColor={colorType}>
       <View>
@@ -90,98 +127,104 @@ export default function Pokemon() {
           </Pressable>
 
           <ThemedText color="grayWhite" variant="subtitle2">
-            #{params.id.padStart(3, "0")}
+            #{id.toString().padStart(3, "0")}
           </ThemedText>
         </Row>
-        <View style={styles.body}>
+
+        <Card style={[styles.card, { overflow: "visible" }]}>
           <Row style={styles.imageRow}>
-            <Pressable onPress={onPrevious}>
-              <Image
-                width={24}
-                height={24}
-                source={require("@/assets/images/chevron_left.png")}
-              />
-            </Pressable>
+            {isFirst ? (
+              <View style={{ width: 24, height: 24 }}></View>
+            ) : (
+              <Pressable onPress={onPrevious}>
+                <Image
+                  width={24}
+                  height={24}
+                  source={require("@/assets/images/chevron_left.png")}
+                />
+              </Pressable>
+            )}
 
             <Pressable onPress={onImagePress}>
               <Image
                 style={styles.artwork}
                 source={{
-                  uri: getPokemonArtwork(params.id),
+                  uri: getPokemonArtwork(id),
                 }}
                 width={200}
                 height={200}
               />
             </Pressable>
-            <Pressable onPress={onNext}>
-              <Image
-                width={24}
-                height={24}
-                source={require("@/assets/images/chevron_right.png")}
-              />
-            </Pressable>
+            {isLast ? (
+              <View style={{ width: 24, height: 24 }}></View>
+            ) : (
+              <Pressable onPress={onNext}>
+                <Image
+                  width={24}
+                  height={24}
+                  source={require("@/assets/images/chevron_right.png")}
+                />
+              </Pressable>
+            )}
+          </Row>
+          <Row gap={16} style={{ height: 20 }}>
+            {types.map((type) => (
+              <PokemonType name={type.type.name} key={type.type.name} />
+            ))}
           </Row>
 
-          <Card style={styles.card}>
-            <Row gap={16} style={{ height: 20 }}>
-              {types.map((type) => (
-                <PokemonType name={type.type.name} key={type.type.name} />
-              ))}
-            </Row>
+          {/* About */}
+          <ThemedText variant="subtitle1" style={{ color: colorType }}>
+            About
+          </ThemedText>
+          <Row>
+            <PokemonSpec
+              style={{
+                borderStyle: "solid",
+                borderRightWidth: 1,
+                borderColor: colors.grayLight,
+              }}
+              title={formatWeight(pokemon?.weight)}
+              description="Weight"
+              image={require("@/assets/images/poids.png")}
+            />
+            <PokemonSpec
+              style={{
+                borderStyle: "solid",
+                borderRightWidth: 1,
+                borderColor: colors.grayLight,
+              }}
+              title={formatWeight(pokemon?.height)}
+              description="Size"
+              image={require("@/assets/images/taille.png")}
+            />
+            <PokemonSpec
+              title={pokemon?.moves
+                .slice(0, 2)
+                .map((m) => m.move.name)
+                .join("\n")}
+              description="Moves"
+            />
+          </Row>
 
-            {/* About */}
-            <ThemedText variant="subtitle1" style={{ color: colorType }}>
-              About
-            </ThemedText>
-            <Row>
-              <PokemonSpec
-                style={{
-                  borderStyle: "solid",
-                  borderRightWidth: 1,
-                  borderColor: colors.grayLight,
-                }}
-                title={formatWeight(pokemon?.weight)}
-                description="Weight"
-                image={require("@/assets/images/poids.png")}
+          <ThemedText>{bio}</ThemedText>
+
+          {/* Stats */}
+          <ThemedText variant="subtitle1" style={{ color: colorType }}>
+            Base Stats
+          </ThemedText>
+
+          <View style={{ alignSelf: "stretch" }}>
+            {stats.map((stat) => (
+              <PokemonStat
+                key={stat.stat.name}
+                name={stat.stat.name}
+                value={stat.base_stat}
+                color={colorType}
               />
-              <PokemonSpec
-                style={{
-                  borderStyle: "solid",
-                  borderRightWidth: 1,
-                  borderColor: colors.grayLight,
-                }}
-                title={formatWeight(pokemon?.height)}
-                description="Size"
-                image={require("@/assets/images/taille.png")}
-              />
-              <PokemonSpec
-                title={pokemon?.moves
-                  .slice(0, 2)
-                  .map((m) => m.move.name)
-                  .join("\n")}
-                description="Moves"
-              />
-            </Row>
-
-            <ThemedText>{bio}</ThemedText>
-
-            {/* Stats */}
-            <ThemedText variant="subtitle1" style={{ color: colorType }}>
-              Base Stats
-            </ThemedText>
-
-            <View style={{ alignSelf: "stretch" }}>
-              {stats.map((stat) => (
-                <PokemonStat
-                  key={stat.stat.name}
-                  name={stat.stat.name}
-                  value={stat.base_stat}
-                  color={colorType}
-                />
-              ))}
-            </View>
-          </Card>
-        </View>
+            ))}
+          </View>
+        </Card>
       </View>
     </RootView>
   )
@@ -208,14 +251,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   artwork: {},
-  body: {
-    marginTop: 144,
-  },
+
   card: {
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
     gap: 16,
     alignItems: "center",
+    marginTop: 144,
   },
 })
